@@ -1,0 +1,742 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Room Booking API",
+    "description": "Lab work 7 ",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/Ticket/{TicketId}": {
+      "get": {
+        "summary": "Get ticket by id",
+        "tags": [
+          "TicketBase"
+        ],
+        "operationId": "GetTicket",
+        "parameters": [
+          {
+            "name": "TicketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully get ticket by Id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ticket"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Ticket/get-by-userid/{Username}": {
+      "get": {
+        "summary": "Get all user's tickets",
+        "tags": [
+          "User"
+        ],
+        "operationId": "GetUsersTickets",
+        "parameters": [
+          {
+            "name": "Username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully get tickets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Tickets"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Ticket/get-by-event-id/{EventId}": {
+      "get": {
+        "summary": "Get all tickets on Event",
+        "tags": [
+          "TicketBase",
+          "User"
+        ],
+        "operationId": "GetTicketsOnEvent",
+        "parameters": [
+          {
+            "name": "EventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully get tickets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Tickets"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Ticket": {
+      "post": {
+        "summary": "Add ticket",
+        "tags": [
+          "TicketBase"
+        ],
+        "operationId": "AddTicket",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "EventId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "Price": {
+                    "type": "integer"
+                  },
+                  "Line": {
+                    "type": "integer"
+                  },
+                  "Place": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "TicketId",
+                  "Price"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully added Ticket",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Ticket/{EventId}": {
+      "delete": {
+        "summary": "Delete Tickets by Eventid",
+        "tags": [
+          "TicketBase"
+        ],
+        "operationId": "DeleteTickets",
+        "parameters": [
+          {
+            "name": "EventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted Tickets in Event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tickets"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Event": {
+      "post": {
+        "summary": "Add new event",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddEvent"
+              }
+            }
+          }
+        },
+        "tags": [
+          "TicketBase"
+        ],
+        "operationId": "AddEvent",
+        "responses": {
+          "200": {
+            "description": "Successfully added Event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Event/{EventId}": {
+      "delete": {
+        "summary": "Delete Event by id",
+        "tags": [
+          "TicketBase"
+        ],
+        "operationId": "DeleteEvent",
+        "parameters": [
+          {
+            "name": "EventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted Event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update information about Event",
+        "tags": [
+          "TicketBase"
+        ],
+        "operationId": "EditEvent",
+        "parameters": [
+          {
+            "name": "EventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddEvent"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully updated Event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Event"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/User": {
+      "post": {
+        "summary": "Sign up",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        },
+        "tags": [
+          "User"
+        ],
+        "operationId": "Create an account",
+        "responses": {
+          "201": {
+            "description": "Successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/SuperUser": {
+      "post": {
+        "summary": "Add new artist",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        },
+        "tags": [
+          "TicketBase"
+        ],
+        "operationId": "Create an superuser account",
+        "responses": {
+          "201": {
+            "description": "Successfully created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/User/booking": {
+      "put": {
+        "summary": "booking",
+        "tags": [
+          "User"
+        ],
+        "operationId": "Booking",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "IsBooked": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "TicketId": {
+                    "type": "integer"
+                  },
+                  "Username": {
+                    "type": "string",
+                    "example": ""
+                  }
+                },
+                "required": [
+                  "IsBooked",
+                  "TicketId",
+                  "Username"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully booked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ticket"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/User/buying": {
+      "put": {
+        "summary": "buying ticket",
+        "tags": [
+          "User"
+        ],
+        "operationId": "Buying",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "TicketId": {
+                    "type": "integer",
+                    "example": ""
+                  },
+                  "Username": {
+                    "type": "string",
+                    "example": ""
+                  }
+                },
+                "required": [
+                  "TicketId",
+                  "Username"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successfully canceled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ticket"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Ticket": {
+        "type": "object",
+        "required": [
+          "TicketId",
+          "Price"
+        ],
+        "properties": {
+          "TicketId": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "example": 10
+          },
+          "Price": {
+            "type": "integer",
+            "format": "int64",
+            "example": 500
+          },
+          "IsBooked": {
+            "type": "boolean",
+            "example": 0
+          },
+          "IsPaid": {
+            "type": "boolean",
+            "example": 0
+          },
+          "Line": {
+            "type": "integer",
+            "example": 2
+          },
+          "Place": {
+            "type": "integer",
+            "example": 2
+          },
+          "EventId": {
+            "type": "integer",
+            "example": 5
+          },
+          "Username": {
+            "type": "integer",
+            "example": 3
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "required": [
+          "Username"
+        ],
+        "properties": {
+          "Username": {
+            "type": "string",
+            "example": "PetroUst"
+          },
+          "Name": {
+            "type": "string",
+            "example": "Petro"
+          },
+          "Surname": {
+            "type": "string",
+            "example": "Pukach"
+          },
+          "Email": {
+            "type": "string",
+            "example": "pushka@email.com"
+          },
+          "Password": {
+            "type": "string",
+            "example": "12345"
+          }
+        }
+      },
+      "Event": {
+        "type": "object",
+        "properties": {
+          "EventId": {
+            "type": "integer",
+            "example": 5
+          },
+          "EventName": {
+            "type": "string",
+            "example": "GIGA CONCERT"
+          },
+          "Time": {
+            "type": "string",
+            "example": "2022-10-20 19:00"
+          },
+          "City": {
+            "type": "string",
+            "example": "Lviv"
+          },
+          "Location": {
+            "type": "string",
+            "example": "Arena Lviv"
+          },
+          "MaxTickets": {
+            "type": "integer",
+            "example": 50000
+          }
+        }
+      },
+      "AddEvent": {
+        "type": "object",
+        "properties": {
+          "EventName": {
+            "type": "string",
+            "example": "GIGA CONCERT"
+          },
+          "Time": {
+            "type": "string",
+            "example": "2022-10-20 19:00"
+          },
+          "City": {
+            "type": "string",
+            "example": "Lviv"
+          },
+          "Location": {
+            "type": "string",
+            "example": "Arena Lviv"
+          },
+          "MaxTickets": {
+            "type": "integer",
+            "example": 50000
+          }
+        }
+      },
+      "Users": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/User"
+        }
+      },
+      "Tickets": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Ticket"
+        }
+      },
+      "Events": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Event"
+        }
+      },
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "type": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
