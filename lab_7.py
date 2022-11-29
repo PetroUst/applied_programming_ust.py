@@ -239,7 +239,7 @@ def addUser():
         Surname = request.json['Surname']
         Email = request.json['Email']
         Password = request.json['Password']
-        # Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         new_user = User(Username=Username, Name=Name, Surname=Surname,
                         Email=Email, Password=Password,Role="User")
