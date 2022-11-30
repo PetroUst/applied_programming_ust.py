@@ -1,4 +1,3 @@
-import bcrypt as bcrypt
 from sqlalchemy import *
 from flask import *
 from flask_marshmallow import Marshmallow
@@ -7,6 +6,7 @@ from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
 from sqlalchemy.orm import sessionmaker
 from flask_swagger_ui import *
 from main import *
+from flask_bcrypt import Bcrypt
 from flask_httpauth import HTTPBasicAuth
 from sqlalchemy import and_
 app = Flask(__name__)
@@ -28,12 +28,12 @@ app.register_blueprint(SWAGGER_BLUEPRINT, url_prefix=SWAGGER_URL)
 
 auth = HTTPBasicAuth()
 
+bcrypt = Bcrypt()
 @auth.verify_password
 def verify_password(username, password):
     try:
-        user = s.query(User).filter(and_(User.Username == username,
-                                         User.Password == password)).first() is not None
-        if user:
+        user = s.query(User).filter(User.Username == username).one()
+        if user and bcrypt.check_password_hash(user.Password, password):
             return username
     except:
         return Response(status=500)
@@ -239,7 +239,7 @@ def addUser():
         Surname = request.json['Surname']
         Email = request.json['Email']
         Password = request.json['Password']
-        Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        Password = bcrypt.generate_password_hash(Password)
 
         new_user = User(Username=Username, Name=Name, Surname=Surname,
                         Email=Email, Password=Password,Role="User")
