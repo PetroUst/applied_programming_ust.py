@@ -1,3 +1,4 @@
+import bcrypt as bcrypt
 from sqlalchemy import *
 from flask import *
 from flask_marshmallow import Marshmallow
@@ -6,7 +7,6 @@ from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
 from sqlalchemy.orm import sessionmaker
 from flask_swagger_ui import *
 from main import *
-from flask_bcrypt import Bcrypt
 from flask_httpauth import HTTPBasicAuth
 from sqlalchemy import and_
 app = Flask(__name__)
@@ -28,12 +28,12 @@ app.register_blueprint(SWAGGER_BLUEPRINT, url_prefix=SWAGGER_URL)
 
 auth = HTTPBasicAuth()
 
-bcrypt = Bcrypt()
 @auth.verify_password
 def verify_password(username, password):
     try:
-        user = s.query(User).filter(User.Username == username).one()
-        if user and bcrypt.check_password_hash(user.Password, password):
+        user = s.query(User).filter(and_(User.Username == username,User.Password==password)).first() is not None
+        # and bcrypt.checkpw(password.encode("utf-8"), user.Password.encode("utf-8"))
+        if user:
             return username
     except:
         return Response(status=500)
@@ -103,6 +103,10 @@ def addTicket():
         IsBooked = 0
         IsPaid = 0
         event = s.query(Event).filter(Event.EventId == EventId).one()
+        count = s.query(Ticket).filter(Ticket.EventId == EventId).count()
+        if count+1>event.MaxTickets:
+            return Response(status=420, responce="You can't add tickets more")
+        print("count = ", count,event.MaxTickets)
         Username = event.Username
         current = auth.username()
         if current != Username:
@@ -220,10 +224,13 @@ Users_schema = UserSchema(many=True)
 
 # 11get all user`s tickets
 @app.route("/Ticket/get-by-userid/<string:Username>", methods=["GET"])
+# role=['User']
 @auth.login_required(role=['User'])
 def getUsersTickets(Username):
     current = auth.username()
     if current != Username:
+        print(current)
+        print('\n\n\n')
         return Response(status=403, response='Access denied')
     tickets = s.query(Ticket).filter(Ticket.Username == Username).all()
 
@@ -239,7 +246,7 @@ def addUser():
         Surname = request.json['Surname']
         Email = request.json['Email']
         Password = request.json['Password']
-        Password = bcrypt.generate_password_hash(Password)
+        # Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
         new_user = User(Username=Username, Name=Name, Surname=Surname,
                         Email=Email, Password=Password,Role="User")
@@ -260,7 +267,7 @@ def addSuperUser():
         Surname = request.json['Surname']
         Email = request.json['Email']
         Password = request.json['Password']
-        # Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        # Password = bcrypt.generate_password_hash(Password)
 
         new_user = User(Username=Username, Name=Name, Surname=Surname,
                         Email=Email, Password=Password,Role="SuperUser")
@@ -276,65 +283,59 @@ def addSuperUser():
 
 
 # 11book Ticket
-@app.route("/User/booking", methods=["PUT"])
+@app.route("/User/booking/<int:TicketId>", methods=["PUT"])
 @auth.login_required(role=['User'])
-def BookTicketById():
+def BookTicketById(TicketId):
 
     try:
-
-        TicketId = request.json['TicketId']
-        Username = request.json['Username']
-        IsBooked = request.json['IsBooked']
         current = auth.username()
-        if current != Username:
-            return Response(status=403, response='Access denied')
         ticket = s.query(Ticket).filter(Ticket.TicketId == TicketId).one()
-
-        if ticket.IsPaid:
-            return handle_403_error(1)
-
-        if ticket.IsBooked:
-            if ticket.Username != Username:
-                return handle_403_error(1)
-
-            if IsBooked == 0:
-                ticket.Username = None
-
-            ticket.IsBooked = IsBooked
-
-
-        s.commit()
+        if ticket.Username is not None:
+            return Response(status=403, response='The ticket is already booked')
+        else:
+            ticket.Username = current
+            ticket.IsBooked = 1
+            s.commit()
     except Exception as e:
-        return jsonify({"Error": "Invalid request, please try again."})
+        return jsonify({"Error": "Choose another ticket."})
     return Ticket_schema.jsonify(ticket)
 
 
 # 11buy ticket
-@app.route("/User/buying", methods=["PUT"])
+@app.route("/User/buying/<int:TicketId>", methods=["PUT"])
 @auth.login_required(role=['User'])
-def BuyTicketById():
+def BuyTicketById(TicketId):
 
     try:
-        TicketId = request.json['TicketId']
-        Username = request.json['Username']
         current = auth.username()
-        if current != Username:
-            return Response(status=403, response='Access denied')
         ticket = s.query(Ticket).filter(Ticket.TicketId == TicketId).one()
-
-        # if ticket.IsPaid:
-        #     return handle_403_error(1)
-        #
-        # if ticket.IsBooked:
-        #     if ticket.Username != Username:
-        #         return handle_403_error(1)
-
-        ticket.IsPaid = 1
-        ticket.Username = Username
-
-        s.commit()
+        if (ticket.Username != current and ticket.Username is not None) or ticket.IsPaid == 1:
+            return Response(status=403, response='The ticket is already booked or bought by another person')
+        else:
+            ticket.Username = current
+            ticket.IsPaid = 1
+            s.commit()
     except Exception as e:
-        return jsonify({"Error": "Invalid request, please try again."})
+        return jsonify({"Error": "Choose another ticket."})
+    return Ticket_schema.jsonify(ticket)
+
+@app.route("/User/cancel/<int:TicketId>", methods=["PUT"])
+@auth.login_required(role=['User'])
+def CancelBookingByTicketById(TicketId):
+
+    try:
+        current = auth.username()
+        ticket = s.query(Ticket).filter(Ticket.TicketId == TicketId).one()
+        if ticket.IsPaid == 1:
+            return Response(status=201, response='Already purchased')
+        if ticket.Username == current:
+            ticket.Username = None
+            ticket.IsBooked = 0
+            s.commit()
+        else:
+            return Response(status=403, response='Access denied')
+    except Exception as e:
+        return jsonify({"Error": "Choose another ticket."})
     return Ticket_schema.jsonify(ticket)
 
 if __name__ == "__main__" : app.run()

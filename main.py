@@ -14,7 +14,7 @@ class User(Base):
     Name = Column(String(10), nullable=False)
     Surname = Column(String(15), nullable=False)
     Email = Column(String(30), nullable=False)
-    Password = Column(String(45), nullable=False)
+    Password = Column(String(300), nullable=False)
     Ticket = relationship("Ticket", overlaps="Ticket")
     Role = Column(String(30), nullable=False)
 

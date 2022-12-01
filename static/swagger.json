@@ -460,42 +460,23 @@
         }
       }
     },
-    "/User/booking": {
+    "/User/booking/{TicketId}": {
       "put": {
         "summary": "booking",
         "tags": [
           "User"
         ],
         "operationId": "Booking",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "IsBooked": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 1
-                  },
-                  "TicketId": {
-                    "type": "integer"
-                  },
-                  "Username": {
-                    "type": "string",
-                    "example": ""
-                  }
-                },
-                "required": [
-                  "IsBooked",
-                  "TicketId",
-                  "Username"
-                ]
-              }
+        "parameters": [
+          {
+            "name": "TicketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
             }
           }
-        },
+        ],
         "responses": {
           "200": {
             "description": "Successfully booked",
@@ -520,39 +501,66 @@
         }
       }
     },
-    "/User/buying": {
+    "/User/buying/{TicketId}": {
       "put": {
         "summary": "buying ticket",
         "tags": [
           "User"
         ],
         "operationId": "Buying",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "TicketId": {
-                    "type": "integer",
-                    "example": ""
-                  },
-                  "Username": {
-                    "type": "string",
-                    "example": ""
-                  }
-                },
-                "required": [
-                  "TicketId",
-                  "Username"
-                ]
+        "parameters": [
+          {
+            "name": "TicketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully canceled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ticket"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/User/cancel/{TicketId}": {
+      "put": {
+        "summary": "cancel booking",
+        "tags": [
+          "User"
+        ],
+        "operationId": "Canceling",
+        "parameters": [
+          {
+            "name": "TicketId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
-          "201": {
+          "200": {
             "description": "Successfully canceled",
             "content": {
               "application/json": {
