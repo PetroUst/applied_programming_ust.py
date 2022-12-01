@@ -338,4 +338,9 @@ def CancelBookingByTicketById(TicketId):
         return jsonify({"Error": "Choose another ticket."})
     return Ticket_schema.jsonify(ticket)
 
+@app.route("/Event/get-all-events", methods=["GET"])
+def getEvents():
+    events = s.query(Event).all()
+    return Events_schema.jsonify(events)
+
 if __name__ == "__main__" : app.run()

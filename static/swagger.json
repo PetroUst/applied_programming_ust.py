@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Room Booking API",
+    "title": "Ticket reservation API",
     "description": "Lab work 7 ",
     "version": "1.0.0"
   },
@@ -127,6 +127,41 @@
                   "allOf": [
                     {
                       "$ref": "#/components/schemas/Tickets"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Event/get-all-events": {
+      "get": {
+        "summary": "Get all events",
+        "tags": [
+          "User"
+        ],
+        "operationId": "GetEvents",
+        "responses": {
+          "200": {
+            "description": "Successfully get events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Events"
                     }
                   ]
                 }
