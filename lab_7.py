@@ -247,17 +247,16 @@ def addUser():
         Surname = request.json['Surname']
         Email = request.json['Email']
         Password = request.json['Password']
-        # Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         new_user = User(Username=Username, Name=Name, Surname=Surname,
                         Email=Email, Password=Password,Role="User")
-
         s.add(new_user)
         s.commit()
         return User_schema.jsonify(new_user)
 
     except Exception as e:
-        return jsonify({"Error": "Invalid Request, please try again."})
+        Response(status=420, responce="You can't add tickets more")
+        return jsonify({"Error": "Invalid Request, please change Username."})
 
 
 @app.route("/SuperUser", methods=["POST"])
@@ -277,7 +276,7 @@ def addSuperUser():
         return User_schema.jsonify(new_user)
 
     except Exception as e:
-        return jsonify({"Error": "Invalid Request, please try again."})
+        return jsonify({"Error": "Invalid Request, please change Username."})
 
 
 
