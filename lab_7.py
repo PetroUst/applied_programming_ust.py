@@ -31,12 +31,16 @@ auth = HTTPBasicAuth()
 @auth.verify_password
 def verify_password(username, password):
     try:
-        user = s.query(User).filter(and_(User.Username == username,User.Password==password)).first() is not None
-        # and bcrypt.checkpw(password.encode("utf-8"), user.Password.encode("utf-8"))
-        if user:
+
+        user = s.query(User).filter(User.Username == username).one()
+        if not user:
+            return make_response(404)
+        print(user)
+        if bcrypt.checkpw(password.encode("utf-8"), user.Password.encode("utf-8")):
+            print("nice")
             return username
     except:
-        return Response(status=500)
+        return None
 
 @auth.get_user_roles
 def get_user_roles(username):
@@ -52,9 +56,9 @@ def handle_401_error(_error):
 def handle_403_error(_error):
     return make_response(jsonify({'error': 'Forbidden'}), 403)
 
-# @app.errorhandler(404)
-# def handle_404_error(_error):
-#     return make_response(jsonify({'error': 'Not found'}), 404)
+@app.errorhandler(404)
+def handle_404_error(_error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
 
 
 
@@ -62,15 +66,12 @@ class TicketSchema(ma.Schema):
     class Meta:
         fields = ('TicketId', 'EventId', 'Price', 'Line', 'Place', 'IsBooked', 'IsPaid')
 
-
 Ticket_schema = TicketSchema(many=False)
 Tickets_schema = TicketSchema(many=True)
-
 
 class EventSchema(ma.Schema):
     class Meta:
         fields = ('EventId', 'EventName', 'Time', 'City', 'Location', 'Max-tickets')
-
 
 Event_schema = EventSchema(many=False)
 Events_schema = EventSchema(many=True)
@@ -247,7 +248,7 @@ def addUser():
         Email = request.json['Email']
         Password = request.json['Password']
         # Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
+        Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         new_user = User(Username=Username, Name=Name, Surname=Surname,
                         Email=Email, Password=Password,Role="User")
 
@@ -267,8 +268,7 @@ def addSuperUser():
         Surname = request.json['Surname']
         Email = request.json['Email']
         Password = request.json['Password']
-        # Password = bcrypt.generate_password_hash(Password)
-
+        Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         new_user = User(Username=Username, Name=Name, Surname=Surname,
                         Email=Email, Password=Password,Role="SuperUser")
 

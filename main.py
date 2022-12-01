@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import expression
 
-engine = create_engine("mysql+pymysql://root:1234@127.0.0.1:3307/lab", echo=True)
+engine = create_engine("mysql+pymysql://root:1234@127.0.0.1:3307/pp", echo=True)
 Base = declarative_base()
 
 class User(Base):

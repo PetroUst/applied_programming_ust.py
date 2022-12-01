@@ -15,9 +15,9 @@ class BaseTestCase(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.user_1_credentials = b64encode(b"PetroUst:qwerty").decode('utf-8')
+        self.user_1_credentials = b64encode(b"PetroUst:12345").decode('utf-8')
         self.super_1_credentials = b64encode(b"Giga:12345").decode('utf-8')
-        self.super_2_credentials = b64encode(b"Dzidzio:123456").decode('utf-8')
+        self.super_2_credentials = b64encode(b"Dzidzio:12345").decode('utf-8')
         self.ticket_1_data = {
             "TicketId": 100,
             "EventId": 1,
@@ -79,13 +79,16 @@ class BaseTestCase(TestCase):
         return {"Authorization": f"Basic {credentials}"}
 
 class Test(BaseTestCase):
+    def test_add_user(self):
+        response = self.client.post("/User", json=self.user_1_data)
+        self.assertEqual(response.status_code, 200)
     def test_add_event(self):
         response = self.client.post("/Event", json=self.event_1_data,
         headers=self.get_auth_headers(self.super_1_credentials))
         self.assertEqual(response.status_code, 200)
 
     def test_get_ticket_by_id(self):
-        response = self.client.get("/Ticket/5")
+        response = self.client.get("/Ticket/1")
         self.assertEqual(response.status_code, 200)
 
     def test_get_all_tickets_on_event(self):
@@ -146,9 +149,6 @@ class Test(BaseTestCase):
         headers=self.get_auth_headers(self.user_1_credentials))
         self.assertEqual(response.status_code, 403)
 
-    def test_add_user(self):
-        response = self.client.post("/User", json=self.user_1_data)
-        self.assertEqual(response.status_code, 200)
 
     def test_add_super_user(self):
         response = self.client.post("/SuperUser", json=self.user_1_data)
@@ -156,20 +156,16 @@ class Test(BaseTestCase):
 
 
     def test_booking(self):
-        response = self.client.put("/User/booking", data=json.dumps({
-            "TicketId": "9",
-            "Username": "PetroUst",
-            "IsBooked": 1
-        }), content_type='application/json', headers=self.get_auth_headers(self.user_1_credentials))
+        response = self.client.put("/User/booking/1", content_type='application/json', headers=self.get_auth_headers(self.user_1_credentials))
+        self.assertEqual(response.status_code, 200)
+
+    def test_booking_cancel(self):
+        response = self.client.put("/User/cancel/1", content_type='application/json', headers=self.get_auth_headers(self.user_1_credentials))
         self.assertEqual(response.status_code, 200)
 
 
     def test_buying(self):
-        response = self.client.put("/User/buying", data=json.dumps({
-            "TicketId": "10",
-            "Username": "PetroUst",
-            "IsPaid": 1
-        }), content_type='application/json', headers=self.get_auth_headers(self.user_1_credentials))
+        response = self.client.put("/User/buying/1", content_type='application/json', headers=self.get_auth_headers(self.user_1_credentials))
         self.assertEqual(response.status_code, 200)
 
 
@@ -181,8 +177,10 @@ class Test(BaseTestCase):
     def test_wrong_add_user(self):
         response = self.client.post("/User", json=self.user_1_data)
         self.assertEqual(response.status_code, 200)
-
+    def test_get_all_tickets_on_event(self):
+        response = self.client.get("/Event/get-all-events")
+        self.assertEqual(response.status_code, 200)
     def test_delete_event(self):
-        response = self.client.delete("/Event/11",
+        response = self.client.delete("/Event/4",
         headers=self.get_auth_headers(self.super_1_credentials))
         self.assertEqual(response.status_code, 200)
