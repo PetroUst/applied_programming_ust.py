@@ -9,10 +9,11 @@ from flask_swagger_ui import *
 from main import *
 from flask_httpauth import HTTPBasicAuth
 from sqlalchemy import and_
+from flask_cors import CORS
 app = Flask(__name__)
-
+CORS(app)
 #SQLalchemy
-engine = create_engine("mysql+pymysql://root:12345678@127.0.0.1:3306/pp", echo=True)
+engine = create_engine("mysql+pymysql://root:1234@127.0.0.1:3306/pp", echo=True)
 session = sessionmaker(bind=engine)
 s = session()
 
@@ -31,7 +32,6 @@ auth = HTTPBasicAuth()
 @auth.verify_password
 def verify_password(username, password):
     try:
-
         user = s.query(User).filter(User.Username == username).one()
         if not user:
             return make_response(404)
@@ -60,6 +60,10 @@ def handle_403_error(_error):
 def handle_404_error(_error):
     return make_response(jsonify({'error': 'Not found'}), 404)
 
+@app.errorhandler(405)
+def handle_401_error(_error):
+    return make_response(jsonify({'error': 'Already exists'}), 401)
+
 
 
 class TicketSchema(ma.Schema):
@@ -68,6 +72,12 @@ class TicketSchema(ma.Schema):
 
 Ticket_schema = TicketSchema(many=False)
 Tickets_schema = TicketSchema(many=True)
+
+class UserSchema(ma.Schema):
+    class Meta:
+        fields = ('Username', 'Name', 'Surname', 'Email')
+User_schema = TicketSchema(many=False)
+Users_schema = TicketSchema(many=True)
 
 class EventSchema(ma.Schema):
     class Meta:
@@ -82,6 +92,7 @@ Events_schema = EventSchema(many=True)
 def getTicketById(TicketId):
     ticket = s.query(Ticket).filter(Ticket.TicketId == TicketId).one()
     return Ticket_schema.jsonify(ticket)
+
 
 
 # 11get all tickets on event
@@ -155,7 +166,7 @@ def addEvent():
         MaxTickets = request.json['MaxTickets']
 
         new_event = Event(EventName=EventName,
-                        Time=datetime.strptime(Time, "%Y-%m-%d %H:%M"), City=City,
+                        Time=datetime.strptime(Time, "%d-%m-%Y %H:%M"), City=City,
                         Location=Location, MaxTickets=MaxTickets, Username=auth.username())
 
         s.add(new_event)
@@ -166,7 +177,29 @@ def addEvent():
         return jsonify({"Error": "Invalid Request, please try again."})
 
 
+@app.route("/User/login", methods=["POST"])
+def login():
+    username = request.json['Username']
+    password = request.json['Password']
+    user = s.query(User).filter(User.Username == username).one()
+    if bcrypt.checkpw(password.encode("utf-8"), user.Password.encode("utf-8")):
+        return jsonify({"Success": "You are logged in."})
+    else:
+        return jsonify({"Error": "Invalid username or password."})
+
 # 11delete event by id
+
+@app.route("/User/get-user", methods=["GET"])
+@auth.login_required()
+def getUser():
+    username = auth.username()
+    user = s.query(User).filter(User.Username == username).one()
+    if user:
+        user.Password = ""
+        s.rollback()
+        return User_schema.jsonify(user)
+    return Response(status=404, response='User not found, log in please')
+
 @app.route("/Event/<int:EventId>", methods=["DELETE"])
 @auth.login_required(role=['SuperUser'])
 def deleteEventById(EventId):
@@ -243,6 +276,7 @@ def getUsersTickets(Username):
 def addUser():
     try:
         Username = request.json['Username']
+        # exUser = s.query(User).filter(User.Username == Username).one()
         Name = request.json['Name']
         Surname = request.json['Surname']
         Email = request.json['Email']
@@ -254,11 +288,36 @@ def addUser():
         s.commit()
         return User_schema.jsonify(new_user)
 
+
+    except Exception as ex:
+        s.rollback()
+        return Response(status=405, response='User with such username or email already exists')
+
+
     except Exception as e:
-        Response(status=420, responce="You can't add tickets more")
-        return jsonify({"Error": "Invalid Request, please change Username."})
+        s.rollback()
+        return Response(status=500, response='An error occurred during the transaction')
 
 
+# @app.route("/SuperUser", methods=["POST"])
+# def addSuperUser():
+#     try:
+#         Username = request.json['Username']
+#         Name = request.json['Name']
+#         Surname = request.json['Surname']
+#         Email = request.json['Email']
+#         Password = request.json['Password']
+#         Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+#         new_user = User(Username=Username, Name=Name, Surname=Surname,
+#                         Email=Email, Password=Password,Role="SuperUser")
+#
+#         s.add(new_user)
+#         # s.rollback()
+#         s.commit()
+#         return User_schema.jsonify(new_user)
+#
+#     except Exception as e:
+#         return Response(status=405, response='User with such username or email already exists')
 @app.route("/SuperUser", methods=["POST"])
 def addSuperUser():
     try:
@@ -269,15 +328,19 @@ def addSuperUser():
         Password = request.json['Password']
         Password = bcrypt.hashpw(Password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         new_user = User(Username=Username, Name=Name, Surname=Surname,
-                        Email=Email, Password=Password,Role="SuperUser")
+                        Email=Email, Password=Password, Role="SuperUser")
 
         s.add(new_user)
         s.commit()
         return User_schema.jsonify(new_user)
 
-    except Exception as e:
-        return jsonify({"Error": "Invalid Request, please change Username."})
+    except Exception as ex:
+        s.rollback()
+        return Response(status=405, response='User with such username or email already exists')
 
+    except Exception as e:
+        s.rollback()
+        return Response(status=500, response='An error occurred during the transaction')
 
 
 
@@ -336,6 +399,7 @@ def CancelBookingByTicketById(TicketId):
     except Exception as e:
         return jsonify({"Error": "Choose another ticket."})
     return Ticket_schema.jsonify(ticket)
+
 
 @app.route("/Event/get-all-events", methods=["GET"])
 def getEvents():
