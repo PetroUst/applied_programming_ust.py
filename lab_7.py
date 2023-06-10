@@ -87,7 +87,7 @@ def handle_401_error(_error):
 
 class TicketSchema(ma.Schema):
     class Meta:
-        fields = ('TicketId', 'EventId', 'Price', 'Line', 'Place', 'IsBooked', 'IsPaid')
+        fields = ('TicketId', 'EventId', 'Price', 'IsBooked', 'IsPaid')
 
 Ticket_schema = TicketSchema(many=False)
 Tickets_schema = TicketSchema(many=True)
@@ -109,9 +109,29 @@ Events_schema = EventSchema(many=True)
 
 # 11get ticket by id
 @app.route("/Ticket/<int:TicketId>", methods=["GET"])
+@auth.login_required(role=['User'])
 def getTicketById(TicketId):
-    ticket = s.query(Ticket).filter(Ticket.TicketId == TicketId).one()
-    return Ticket_schema.jsonify(ticket)
+    sesM = sessionmaker(bind=engine)
+    ses = sesM()
+    ticket = ses.query(Ticket).filter(Ticket.TicketId == TicketId).one()
+    event = ses.query(Event).filter(Event.EventId == ticket.EventId).one()
+    modified_ticket = {
+        'TicketId': ticket.TicketId,
+        'EventId': ticket.EventId,
+        'Price': ticket.Price,
+        'IsBooked': ticket.IsBooked,
+        'IsPaid': ticket.IsPaid,
+        'EventName': event.EventName,
+        'Time': event.Time,
+        'Location': event.Location+', '+event.City
+    }
+    ses.close()
+    return jsonify(modified_ticket)
+
+@app.route("/Event/<int:EventId>", methods=["GET"])
+def getEventById(EventId):
+    event = s.query(Event).filter(Event.EventId == EventId).one()
+    return Event_schema.jsonify(event)
 
 
 
@@ -124,37 +144,69 @@ def getTicketsByEventId(EventId):
 
 
 # 11add ticket
+# @app.route("/Ticket", methods=["POST"])
+# @auth.login_required(role=['SuperUser'])
+# def addTicket():
+#     try:
+#         EventId = request.json['EventId']
+#         Price = request.json['Price']
+#         Line = request.json['Line']
+#         Place = request.json['Place']
+#         IsBooked = 0
+#         IsPaid = 0
+#         event = s.query(Event).filter(Event.EventId == EventId).one()
+#         count = s.query(Ticket).filter(Ticket.EventId == EventId).count()
+#         if count+1>event.MaxTickets:
+#             return Response(status=420, responce="You can't add tickets more")
+#         print("count = ", count,event.MaxTickets)
+#         Username = event.Username
+#         current = auth.username()
+#         if current != Username:
+#             return Response(status=403, response='Access denied')
+#
+#         new_ticket = Ticket(EventId=EventId,  IsBooked=IsBooked,
+#                             IsPaid=IsPaid, Price=Price, Line=Line,
+#                             Place=Place)
+#
+#         s.add(new_ticket)
+#         s.commit()
+#         return Ticket_schema.jsonify(new_ticket)
+#
+#     except Exception as e:
+#         return jsonify({"Error": "Invalid Request, please try again."})
+
 @app.route("/Ticket", methods=["POST"])
-@auth.login_required(role=['SuperUser'])
-def addTicket():
+@auth.login_required(role=['User'])
+def addTickets():
     try:
+        # Price = request.json['Price']
+        # Line = request.json['Line']
+        # Place = request.json['Place']
         EventId = request.json['EventId']
-        Price = request.json['Price']
-        Line = request.json['Line']
-        Place = request.json['Place']
-        IsBooked = 0
-        IsPaid = 0
+        IsBooked = request.json['IsBooked']
+        IsPaid = request.json['IsPaid']
+        num = request.json['NumOfTickets']
+
         event = s.query(Event).filter(Event.EventId == EventId).one()
         count = s.query(Ticket).filter(Ticket.EventId == EventId).count()
-        if count+1>event.MaxTickets:
-            return Response(status=420, responce="You can't add tickets more")
+        num+=count
+        if num>event.MaxTickets:
+            s.rollback()
+            return Response(status=405, response='There are not enough tickets')
         print("count = ", count,event.MaxTickets)
-        Username = event.Username
+        # Username = event.Username
         current = auth.username()
-        if current != Username:
-            return Response(status=403, response='Access denied')
+        # if current != Username:
+        #     return Response(status=403, response='Access denied')
 
-        new_ticket = Ticket(EventId=EventId,  IsBooked=IsBooked,
-                            IsPaid=IsPaid, Price=Price, Line=Line,
-                            Place=Place)
-
-        s.add(new_ticket)
+        for i in range(num):
+            new_ticket = Ticket(EventId=EventId,  IsBooked=IsBooked,IsPaid=IsPaid, Price=event.Price, Username=current)
+            s.add(new_ticket)
         s.commit()
-        return Ticket_schema.jsonify(new_ticket)
+        return Tickets_schema.jsonify(new_ticket)
 
     except Exception as e:
         return jsonify({"Error": "Invalid Request, please try again."})
-
 
 # 11delete tickets by event id
 @app.route("/Ticket/<int:EventId>", methods=["DELETE"])
@@ -284,18 +336,35 @@ Users_schema = UserSchema(many=True)
 
 
 # 11get all user`s tickets
-@app.route("/Ticket/get-by-userid/<string:Username>", methods=["GET"])
-# role=['User']
+@app.route("/Ticket/get-by-userid", methods=["GET"])
 @auth.login_required(role=['User'])
-def getUsersTickets(Username):
+def getUsersTickets():
     current = auth.username()
-    if current != Username:
-        print(current)
-        print('\n\n\n')
-        return Response(status=403, response='Access denied')
-    tickets = s.query(Ticket).filter(Ticket.Username == Username).all()
+    sesM = sessionmaker(bind=engine)
+    ses = sesM()
+    tickets = ses.query(Ticket).filter(Ticket.Username == current).all()
 
-    return Tickets_schema.jsonify(tickets)
+    modified_tickets = []
+
+    for ticket in tickets:
+        # Retrieve additional properties from the associated Event object
+        event = ses.query(Event).filter(Event.EventId == ticket.EventId).one()
+        # Create a new dictionary with the original ticket properties and the additional properties
+        modified_ticket = {
+            'TicketId': ticket.TicketId,
+            'EventId': ticket.EventId,
+            'Price': ticket.Price,
+            'IsBooked': ticket.IsBooked,
+            'IsPaid': ticket.IsPaid,
+            'EventName': event.EventName,
+            'Time':event.Time,
+            'Location': event.Location+', '+event.City
+        }
+
+        # Append the modified ticket to the new list
+        modified_tickets.append(modified_ticket)
+    ses.close()
+    return jsonify(modified_tickets)
 
 
 # 11add user
@@ -384,22 +453,21 @@ def addSuperUser():
 
 
 # 11book Ticket
-@app.route("/User/booking/<int:TicketId>", methods=["PUT"])
-@auth.login_required(role=['User'])
-def BookTicketById(TicketId):
-
-    try:
-        current = auth.username()
-        ticket = s.query(Ticket).filter(Ticket.TicketId == TicketId).one()
-        if ticket.Username is not None:
-            return Response(status=403, response='The ticket is already booked')
-        else:
-            ticket.Username = current
-            ticket.IsBooked = 1
-            s.commit()
-    except Exception as e:
-        return jsonify({"Error": "Choose another ticket."})
-    return Ticket_schema.jsonify(ticket)
+# @app.route("/User/booking/<int:TicketId>", methods=["PUT"])
+# @auth.login_required(role=['User'])
+# def BookTicketById(TicketId):
+#     try:
+#         current = auth.username()
+#         ticket = s.query(Ticket).filter(Ticket.TicketId == TicketId).one()
+#         if ticket.Username is not None:
+#             return Response(status=403, response='The ticket is already booked')
+#         else:
+#             ticket.Username = current
+#             ticket.IsBooked = 1
+#             s.commit()
+#     except Exception as e:
+#         return jsonify({"Error": "Choose another ticket."})
+#     return Ticket_schema.jsonify(ticket)
 
 
 # 11buy ticket
@@ -408,33 +476,44 @@ def BookTicketById(TicketId):
 def BuyTicketById(TicketId):
 
     try:
+        sesM = sessionmaker(bind=engine)
+        ses = sesM()
         current = auth.username()
-        ticket = s.query(Ticket).filter(Ticket.TicketId == TicketId).one()
+        ticket = ses.query(Ticket).filter(Ticket.TicketId == TicketId).one()
         if (ticket.Username != current and ticket.Username is not None) or ticket.IsPaid == 1:
+            ses.close()
             return Response(status=403, response='The ticket is already booked or bought by another person')
         else:
             ticket.Username = current
             ticket.IsPaid = 1
-            s.commit()
+            ses.commit()
     except Exception as e:
         return jsonify({"Error": "Choose another ticket."})
     return Ticket_schema.jsonify(ticket)
 
-@app.route("/User/cancel/<int:TicketId>", methods=["PUT"])
+@app.route("/User/cancel/<int:TicketId>", methods=["DELETE"])
 @auth.login_required(role=['User'])
 def CancelBookingByTicketById(TicketId):
 
+
     try:
-        current = auth.username()
-        ticket = s.query(Ticket).filter(Ticket.TicketId == TicketId).one()
+        sesM = sessionmaker(bind=engine)
+        ses = sesM()
+        ticket = ses.query(Ticket).filter(Ticket.TicketId == TicketId).one()
+        if ticket.Username != auth.username():
+            ses.close()
+            return Response(status=403, response='The ticket is booked by another person')
         if ticket.IsPaid == 1:
+            ses.close()
             return Response(status=201, response='Already purchased')
-        if ticket.Username == current:
-            ticket.Username = None
-            ticket.IsBooked = 0
-            s.commit()
-        else:
-            return Response(status=403, response='Access denied')
+
+        ticket.Username = None
+        ticket.IsBooked = 0
+        ses.delete(ticket)
+        ses.commit()
+        ses.close()
+
+
     except Exception as e:
         return jsonify({"Error": "Choose another ticket."})
     return Ticket_schema.jsonify(ticket)
@@ -442,7 +521,10 @@ def CancelBookingByTicketById(TicketId):
 
 @app.route("/Event/get-all-events", methods=["GET"])
 def getEvents():
-    events = s.query(Event).all()
+    sesM = sessionmaker(bind=engine)
+    ses = sesM()
+    events = ses.query(Event).all()
     return Events_schema.jsonify(events)
+
 
 if __name__ == "__main__" : app.run()
