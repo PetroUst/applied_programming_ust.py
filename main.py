@@ -35,10 +35,10 @@ class Ticket(Base):
 class Event(Base):
     __tablename__ = "Events"
     EventId = Column(Integer, primary_key=True)
-    EventName = Column(String(15), nullable=False)
-    Time = Column(sqlalchemy.DATETIME, nullable=False)
+    EventName = Column(String(40), nullable=False)
+    Time = Column(String(20), nullable=False)
     City = Column(String(15), nullable=False)
-    Location = Column(String(15), nullable=False)
+    Location = Column(String(30), nullable=False)
     Price = Column(Integer, nullable=False)
     MaxTickets = Column(Integer,nullable=False)
     Ticket = relationship("Ticket",overlaps="Ticket")

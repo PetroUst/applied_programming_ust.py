@@ -10,12 +10,15 @@ from main import *
 from flask_httpauth import HTTPBasicAuth
 from sqlalchemy import and_
 from flask_cors import CORS
+from copy import copy
+import time
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins='http://localhost:4200')
 #SQLalchemy
-engine = create_engine("mysql+pymysql://root:1234@127.0.0.1:3306/pp", echo=True)
-session = sessionmaker(bind=engine)
-s = session()
+# engine = create_engine("mysql+pymysql://root:1234@127.0.0.1:3306/pp", echo=True,pool_size=200,max_overflow=400)
+engine = create_engine("mysql+pymysql://root:1234@127.0.0.1:3306/pp")
+Session = sessionmaker(bind=engine)
+s = Session()
 
 #Marshmallow
 ma = Marshmallow(app)
@@ -29,15 +32,31 @@ app.register_blueprint(SWAGGER_BLUEPRINT, url_prefix=SWAGGER_URL)
 
 auth = HTTPBasicAuth()
 
+# @auth.verify_password
+# def verify_password(username, password):
+#     try:
+#         user = s.query(User).filter(User.Username == username).one()
+#         s.rollback()
+#         if not user:
+#             return make_response(404)
+#         print(user)
+#         if bcrypt.checkpw(password.encode("utf-8"), user.Password.encode("utf-8")):
+#             print("nice")
+#             return username
+#     except:
+#         return None
+
 @auth.verify_password
 def verify_password(username, password):
     try:
-        user = s.query(User).filter(User.Username == username).one()
+        ses = Session()
+        # time.sleep(1)
+        user = ses.query(User).filter(User.Username == username).one()
         if not user:
-            return make_response(404)
-        print(user)
+            return None
+
         if bcrypt.checkpw(password.encode("utf-8"), user.Password.encode("utf-8")):
-            print("nice")
+            ses.close()
             return username
     except:
         return None
@@ -79,9 +98,10 @@ class UserSchema(ma.Schema):
 User_schema = TicketSchema(many=False)
 Users_schema = TicketSchema(many=True)
 
+# Max-tickets -- MaxTickets
 class EventSchema(ma.Schema):
     class Meta:
-        fields = ('EventId', 'EventName', 'Time', 'City', 'Location', 'Max-tickets')
+        fields = ('EventId', 'EventName', 'Time', 'City', 'Location', 'Price', 'MaxTickets')
 
 Event_schema = EventSchema(many=False)
 Events_schema = EventSchema(many=True)
@@ -164,10 +184,14 @@ def addEvent():
         City = request.json['City']
         Location = request.json['Location']
         MaxTickets = request.json['MaxTickets']
-
+        Price = request.json['Price']
+        input_time_format = '%Y-%m-%dT%H:%M'
+        output_time_format = '%d-%m-%Y %H:%M'
+        parsed_datetime = datetime.strptime(Time, input_time_format)
+        formatted_datetime = parsed_datetime.strftime(output_time_format)
         new_event = Event(EventName=EventName,
-                        Time=datetime.strptime(Time, "%d-%m-%Y %H:%M"), City=City,
-                        Location=Location, MaxTickets=MaxTickets, Username=auth.username())
+                        Time=formatted_datetime, City=City,
+                        Location=Location, MaxTickets=MaxTickets, Username=auth.username(), Price=Price)
 
         s.add(new_event)
         s.commit()
@@ -181,10 +205,12 @@ def addEvent():
 def login():
     username = request.json['Username']
     password = request.json['Password']
-    user = s.query(User).filter(User.Username == username).one()
-    if bcrypt.checkpw(password.encode("utf-8"), user.Password.encode("utf-8")):
-        return jsonify({"Success": "You are logged in."})
-    else:
+    try:
+        user = s.query(User).filter(User.Username == username).one()
+        if bcrypt.checkpw(password.encode("utf-8"), user.Password.encode("utf-8")):
+            return jsonify({"Success": "You are logged in."})
+        return jsonify({"Error": "Invalid username or password."})
+    except Exception as e:
         return jsonify({"Error": "Invalid username or password."})
 
 # 11delete event by id
@@ -194,9 +220,10 @@ def login():
 def getUser():
     username = auth.username()
     user = s.query(User).filter(User.Username == username).one()
+    # s.rollback()
     if user:
-        user.Password = ""
-        s.rollback()
+        userCopy = copy(user)
+        userCopy.Password = ""
         return User_schema.jsonify(user)
     return Response(status=404, response='User not found, log in please')
 
@@ -318,6 +345,18 @@ def addUser():
 #
 #     except Exception as e:
 #         return Response(status=405, response='User with such username or email already exists')
+
+@app.route("/Event/get-by-userid", methods=["GET"])
+@auth.login_required(role=['SuperUser'])
+def getUsersEvents():
+    current = auth.username()
+    sesM = sessionmaker(bind=engine)
+    ses = sesM()
+    events = ses.query(Event).filter(Event.Username == current).all()
+    ses.close()
+    return Events_schema.jsonify(events)
+
+
 @app.route("/SuperUser", methods=["POST"])
 def addSuperUser():
     try:
